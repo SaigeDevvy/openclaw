@@ -63,7 +63,7 @@ workflows:
           if grep -q "private static let isoFormatter" "$FILE"; then
             # Swift 6.2 treats ISO8601DateFormatter static storage as non-Sendable shared mutable state.
             # Mark as nonisolated(unsafe) for CI unsigned build.
-            perl -0777 -i -pe 's/private static let isoFormatter:/nonisolated\\(unsafe\\) private static let isoFormatter:/g' "$FILE"
+            sed -i '' 's/private static let isoFormatter:/nonisolated(unsafe) private static let isoFormatter:/g' "$FILE"
           fi
 
       - name: Build unsigned .app
