@@ -56,14 +56,16 @@ workflows:
           xcodegen generate
           test -d OpenClaw.xcodeproj
 
-      - name: Build unsigned .app (iphoneos)
+      - name: Build unsigned .app
         script: |
           set -euo pipefail
+          # Important: do NOT force -sdk iphoneos here.
+          # The OpenClaw scheme includes watch targets; forcing iphoneos makes Xcode
+          # try resolving watch product types in the iOS SDK domain and fails.
           xcodebuild \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
             -configuration Release \
-            -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath "$CM_BUILD_DIR/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
