@@ -49,6 +49,16 @@ workflows:
           chmod +x ./scripts/ios-configure-signing.sh || true
           ./scripts/ios-configure-signing.sh || true
 
+      - name: Patch iOS project for unsigned TrollStore CI
+        script: |
+          set -euo pipefail
+          FILE="apps/ios/project.yml"
+          # Remove extension/watch embed deps from app target for unsigned CI builds.
+          # This avoids ValidateEmbeddedBinary failures on unsigned extension bundles.
+          sed -i '' '/- target: OpenClawShareExtension/{N;d;}' "$FILE" || true
+          sed -i '' '/- target: OpenClawActivityWidget/{N;d;}' "$FILE" || true
+          sed -i '' '/- target: OpenClawWatchApp/d' "$FILE" || true
+
       - name: Generate Xcode project
         script: |
           set -euo pipefail
