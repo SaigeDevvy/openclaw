@@ -27,16 +27,21 @@ workflows:
           node -v || true
           pnpm -v || true
 
-      - name: Install required tooling
+      - name: Install required tooling (no corepack)
         script: |
           set -euo pipefail
           brew install xcodegen swiftlint swiftformat
-          npm i -g pnpm@10 || true
+          npm uninstall -g corepack || true
+          npm install -g pnpm@10.23.0
+          export PATH="$(npm prefix -g)/bin:$PATH"
+          which pnpm
+          pnpm -v
 
       - name: Install dependencies
         script: |
           set -euo pipefail
-          pnpm install --frozen-lockfile
+          export PATH="$(npm prefix -g)/bin:$PATH"
+          pnpm install --frozen-lockfile --ignore-scripts=false
 
       - name: Configure iOS signing files (repo flow)
         script: |
