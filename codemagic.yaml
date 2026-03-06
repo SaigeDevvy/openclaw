@@ -56,6 +56,16 @@ workflows:
           xcodegen generate
           test -d OpenClaw.xcodeproj
 
+      - name: CI hotfix for Swift 6.2 concurrency check
+        script: |
+          set -euo pipefail
+          FILE="apps/ios/Sources/Gateway/GatewaySettingsStore.swift"
+          if grep -q "private static let isoFormatter" "$FILE"; then
+            # Swift 6.2 treats ISO8601DateFormatter static storage as non-Sendable shared mutable state.
+            # Mark as nonisolated(unsafe) for CI unsigned build.
+            perl -0777 -i -pe 's/private static let isoFormatter:/nonisolated\\(unsafe\\) private static let isoFormatter:/g' "$FILE"
+          fi
+
       - name: Build unsigned .app
         script: |
           set -euo pipefail
