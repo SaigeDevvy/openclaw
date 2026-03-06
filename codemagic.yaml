@@ -1,62 +1,65 @@
 workflows:
-ios_unsigned_ipa_trollstore:
-name: iOS unsigned IPA (TrollStore)
-instance_type: mac_mini_m2
-max_build_duration: 60
-triggering:
-events:
-- push
-branch_patterns:
-- pattern: main
-include: true
-source: true
+  ios_unsigned_ipa_trollstore:
+    name: iOS unsigned IPA (TrollStore)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
 
-environment:
-xcode: 16.1
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
 
-scripts:
-- name: Show toolchain
-script: |
-xcodebuild -version
-swift --version
+    environment:
+      xcode: 16.1
 
-- name: Install XcodeGen
-script: brew install xcodegen
+    scripts:
+      - name: Show toolchain
+        script: |
+          xcodebuild -version
+          swift --version
 
-- name: Generate iOS project
-script: |
-cd apps/ios
-xcodegen generate
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
 
-- name: Build unsigned .app (iphoneos)
-script: |
-set -euo pipefail
-xcodebuild \
--project apps/ios/Clawdis.xcodeproj \
--scheme Clawdis \
--configuration Release \
--sdk iphoneos \
--derivedDataPath $CM_BUILD_DIR/DerivedData \
-CODE_SIGNING_ALLOWED=NO \
-CODE_SIGNING_REQUIRED=NO \
-CODE_SIGN_IDENTITY="" \
-build
+      - name: Generate iOS project
+        script: |
+          cd apps/ios
+          xcodegen generate
 
-- name: Package TrollStore IPA
-script: |
-set -euo pipefail
-APP_PATH=$(find "$CM_BUILD_DIR/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)
-if [ -z "${APP_PATH:-}" ]; then
-echo "No .app found"
-exit 1
-fi
+      - name: Build unsigned .app (iphoneos)
+        script: |
+          set -euo pipefail
+          xcodebuild \
+            -project apps/ios/Clawdis.xcodeproj \
+            -scheme Clawdis \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$CM_BUILD_DIR/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
 
-mkdir -p "$CM_BUILD_DIR/Payload"
-cp -R "$APP_PATH" "$CM_BUILD_DIR/Payload/"
-rm -f "$CM_BUILD_DIR/Payload/"*.app/embedded.mobileprovision || true
-cd "$CM_BUILD_DIR"
-zip -qry "Clawdis-unsigned-trollstore.ipa" Payload
-ls -lah "Clawdis-unsigned-trollstore.ipa"
+      - name: Package TrollStore IPA
+        script: |
+          set -euo pipefail
+          APP_PATH="$(find "$CM_BUILD_DIR/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)"
+          if [ -z "${APP_PATH:-}" ]; then
+            echo "No .app found"
+            exit 1
+          fi
 
-artifacts:
-- $CM_BUILD_DIR/Clawdis-unsigned-trollstore.ipa
+          mkdir -p "$CM_BUILD_DIR/Payload"
+          cp -R "$APP_PATH" "$CM_BUILD_DIR/Payload/"
+          rm -f "$CM_BUILD_DIR/Payload/"*.app/embedded.mobileprovision || true
+
+          cd "$CM_BUILD_DIR"
+          zip -qry "Clawdis-unsigned-trollstore.ipa" Payload
+          ls -lah "Clawdis-unsigned-trollstore.ipa"
+
+    artifacts:
+      - $CM_BUILD_DIR/Clawdis-unsigned-trollstore.ipa
