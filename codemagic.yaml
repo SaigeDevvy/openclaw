@@ -1,8 +1,8 @@
 workflows:
   ios_unsigned_ipa_trollstore:
-    name: iOS unsigned IPA (TrollStore)
+    name: OpenClaw iOS unsigned IPA (TrollStore)
     instance_type: mac_mini_m2
-    max_build_duration: 60
+    max_build_duration: 90
 
     triggering:
       events:
@@ -11,55 +11,83 @@ workflows:
         - pattern: main
           include: true
           source: true
+      cancel_previous_builds: true
 
     environment:
       xcode: 16.1
+      vars:
+        SCHEME: OpenClaw
+        PROJECT_PATH: apps/ios/OpenClaw.xcodeproj
 
     scripts:
       - name: Show toolchain
         script: |
           xcodebuild -version
           swift --version
+          node -v || true
+          pnpm -v || true
 
-      - name: Install XcodeGen
+      - name: Install required tooling
         script: |
-          brew install xcodegen
+          set -euo pipefail
+          brew install xcodegen swiftlint swiftformat
+          npm i -g pnpm@10 || true
 
-      - name: Generate iOS project
+      - name: Install dependencies
         script: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Configure iOS signing files (repo flow)
+        script: |
+          set -euo pipefail
+          chmod +x ./scripts/ios-configure-signing.sh || true
+          ./scripts/ios-configure-signing.sh || true
+
+      - name: Generate Xcode project
+        script: |
+          set -euo pipefail
           cd apps/ios
           xcodegen generate
+          test -d OpenClaw.xcodeproj
 
       - name: Build unsigned .app (iphoneos)
         script: |
           set -euo pipefail
           xcodebuild \
-            -project apps/ios/Clawdis.xcodeproj \
-            -scheme Clawdis \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -derivedDataPath "$CM_BUILD_DIR/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
             build
 
-      - name: Package TrollStore IPA
+      - name: Package unsigned IPA for TrollStore
         script: |
           set -euo pipefail
+
           APP_PATH="$(find "$CM_BUILD_DIR/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)"
           if [ -z "${APP_PATH:-}" ]; then
-            echo "No .app found"
+            echo "No .app found in Release-iphoneos"
+            ls -la "$CM_BUILD_DIR/DerivedData/Build/Products" || true
             exit 1
           fi
 
           mkdir -p "$CM_BUILD_DIR/Payload"
           cp -R "$APP_PATH" "$CM_BUILD_DIR/Payload/"
+
+          # Ensure no provisioning profile is embedded for unsigned TrollStore flow
           rm -f "$CM_BUILD_DIR/Payload/"*.app/embedded.mobileprovision || true
 
           cd "$CM_BUILD_DIR"
-          zip -qry "Clawdis-unsigned-trollstore.ipa" Payload
-          ls -lah "Clawdis-unsigned-trollstore.ipa"
+          zip -qry "OpenClaw-unsigned-trollstore.ipa" Payload
+          ls -lah "OpenClaw-unsigned-trollstore.ipa"
 
     artifacts:
-      - $CM_BUILD_DIR/Clawdis-unsigned-trollstore.ipa
+      - $CM_BUILD_DIR/OpenClaw-unsigned-trollstore.ipa
+      - $CM_BUILD_DIR/DerivedData/Build/Products/Release-iphoneos/*.app/**
