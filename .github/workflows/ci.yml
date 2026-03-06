@@ -528,7 +528,7 @@ jobs:
           exit 1
 
   ios:
-    if: false # ignore iOS in CI for now
+    if: true # ignore iOS in CI for now
     runs-on: macos-latest
     steps:
       - name: Checkout
