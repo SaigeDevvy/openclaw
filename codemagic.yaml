@@ -14,7 +14,7 @@ workflows:
       cancel_previous_builds: true
 
     environment:
-      xcode: 16.1
+      xcode: latest
       vars:
         SCHEME: OpenClaw
         PROJECT_PATH: apps/ios/OpenClaw.xcodeproj
